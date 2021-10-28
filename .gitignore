@@ -2,3 +2,5 @@
 vars/*
 *.retry
 .vscode
+
+node_modules
