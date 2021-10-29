@@ -74,7 +74,7 @@ const { Buffer } = require('buffer');
 class Chaincode extends Contract {
 
 	// CreateAsset - create a new asset, store into chaincode state
-	async CreateVoucher(ctx, { id, citizen_id, supplier_id, dealer_id, status, value, package_id, created_at, updated_at }) {
+	async CreateVoucher(ctx, id, citizen_id, supplier_id, dealer_id, status, value, package_id, created_at, updated_at) {
 		const exists = await this.VoucherExists(ctx, id);
 		if (exists) {
 			throw new Error(`The voucher ${id} already exists`);
@@ -84,21 +84,21 @@ class Chaincode extends Contract {
 		let voucher = {
 			docType: 'voucher',
 			voucher_id: id,
-			citizen_id,
-			supplier_id,
-			dealer_id,
-			status,
-			value,
-			package_id,
-			created_at,
-			updated_at
+			citizen_id: citizen_id,
+			supplier_id: supplier_id,
+			dealer_id: dealer_id,
+			status: status,
+			value: value,
+			package_id: package_id,
+			created_at: created_at,
+			updated_at: updated_at
 		};
 
 
 		// === Save asset to state ===
 		await ctx.stub.putState(id, Buffer.from(JSON.stringify(voucher)));
 		let indexName = 'voucher_id~citizen_id';
-		let voucherCitizenIndexKey = await ctx.stub.createCompositeKey(indexName, [voucher.color, voucher.assetID]);
+		let voucherCitizenIndexKey = await ctx.stub.createCompositeKey(indexName, [voucher.voucher_id, voucher.citizen_id]);
 
 		//  Save index entry to state. Only the key name is needed, no need to store a duplicate copy of the marble.
 		//  Note - passing a 'nil' value will effectively delete the key from state, therefore we pass null character as value
@@ -154,25 +154,31 @@ class Chaincode extends Contract {
 	}
 
 	// TransferAsset transfers a asset by setting a new owner name on the asset
-	// async TransferAsset(ctx, assetName, newOwner) {
+	async CommitVoucher(ctx, id, newStatus, dealer_id, package_id) {
 
-	// 	let assetAsBytes = await ctx.stub.getState(assetName);
-	// 	if (!assetAsBytes || !assetAsBytes.toString()) {
-	// 		throw new Error(`Asset ${assetName} does not exist`);
-	// 	}
-	// 	let assetToTransfer = {};
-	// 	try {
-	// 		assetToTransfer = JSON.parse(assetAsBytes.toString()); //unmarshal
-	// 	} catch (err) {
-	// 		let jsonResp = {};
-	// 		jsonResp.error = 'Failed to decode JSON of: ' + assetName;
-	// 		throw new Error(jsonResp);
-	// 	}
-	// 	assetToTransfer.owner = newOwner; //change the owner
+		let assetAsBytes = await ctx.stub.getState(id);
+		if (!assetAsBytes || !assetAsBytes.toString()) {
+			throw new Error(`Voucher ${id} does not exist`);
+		}
+		let currentVoucher = {};
+		try {
+			currentVoucher = JSON.parse(assetAsBytes.toString()); //unmarshal
+		} catch (err) {
+			let jsonResp = {};
+			jsonResp.error = 'Failed to decode JSON of: ' + id;
+			throw new Error(jsonResp);
+		}
 
-	// 	let assetJSONasBytes = Buffer.from(JSON.stringify(assetToTransfer));
-	// 	await ctx.stub.putState(assetName, assetJSONasBytes); //rewrite the asset
-	// }
+
+		currentVoucher.status = newStatus; //change the owner
+		currentVoucher.dealer_id = dealer_id; //change the dealer
+		currentVoucher.package_id = package_id; //change the package
+		currentVoucher.updated_at = new Date().toString(); // change update time
+
+
+		let assetJSONasBytes = Buffer.from(JSON.stringify(currentVoucher));
+		await ctx.stub.putState(id, assetJSONasBytes); //rewrite the asset
+	}
 
 	// GetAssetsByRange performs a range query based on the start and end keys provided.
 	// Read-only function results are not typically submitted to ordering. If the read-only
@@ -182,7 +188,7 @@ class Chaincode extends Contract {
 	// invalidated by the committing peers if the result set has changed between endorsement
 	// time and commit time.
 	// Therefore, range queries are a safe option for performing update transactions based on query results.
-	async GetAssetsByRange(ctx, startKey, endKey) {
+	async GetVouchersByRange(ctx, startKey, endKey) {
 
 		let resultsIterator = await ctx.stub.getStateByRange(startKey, endKey);
 		let results = await this._GetAllResults(resultsIterator, false);
@@ -230,7 +236,7 @@ class Chaincode extends Contract {
 	// and accepting a single query parameter (owner).
 	// Only available on state databases that support rich query (e.g. CouchDB)
 	// Example: Parameterized rich query
-	async QueryAssetsByOwner(ctx, citizen_id) {
+	async QueryAssetsByCitizen(ctx, citizen_id) {
 		let queryString = {};
 		queryString.selector = {};
 		queryString.selector.docType = 'voucher';
@@ -244,7 +250,7 @@ class Chaincode extends Contract {
 	// Supports ad hoc queries that can be defined at runtime by the client.
 	// If this is not desired, follow the QueryAssetsForOwner example for parameterized queries.
 	// Only available on state databases that support rich query (e.g. CouchDB)
-	async QueryAssets(ctx, queryString) {
+	async QueryVoucher(ctx, queryString) {
 		return await this.GetQueryResultForQueryString(ctx, queryString);
 	}
 
@@ -263,7 +269,7 @@ class Chaincode extends Contract {
 	// page size and a bookmark.
 	// The number of fetched records will be equal to or lesser than the page size.
 	// Paginated range queries are only valid for read only transactions.
-	async GetAssetsByRangeWithPagination(ctx, startKey, endKey, pageSize, bookmark) {
+	async GetVouchersByRangeWithPagination(ctx, startKey, endKey, pageSize, bookmark) {
 
 		const { iterator, metadata } = await ctx.stub.getStateByRangeWithPagination(startKey, endKey, pageSize, bookmark);
 		const results = await this._GetAllResults(iterator, false);
@@ -283,7 +289,7 @@ class Chaincode extends Contract {
 	// If this is not desired, follow the QueryAssetsForOwner example for parameterized queries.
 	// Only available on state databases that support rich query (e.g. CouchDB)
 	// Paginated queries are only valid for read only transactions.
-	async QueryAssetsWithPagination(ctx, queryString, pageSize, bookmark) {
+	async QueryVouchersWithPagination(ctx, queryString, pageSize, bookmark) {
 
 		const { iterator, metadata } = await ctx.stub.getQueryResultWithPagination(queryString, pageSize, bookmark);
 		const results = await this._GetAllResults(iterator, false);
@@ -297,7 +303,7 @@ class Chaincode extends Contract {
 	}
 
 	// GetAssetHistory returns the chain of custody for an asset since issuance.
-	async GetAssetHistory(ctx, voucher_id) {
+	async GetVoucherHistory(ctx, voucher_id) {
 
 		let resultsIterator = await ctx.stub.getHistoryForKey(voucher_id);
 		let results = await this._GetAllResults(resultsIterator, true);
@@ -352,13 +358,21 @@ class Chaincode extends Contract {
 	// InitLedger creates sample assets in the ledger
 	async InitLedger(ctx) {
 		const assets = [
-			{ id: "123", citizen_id: "123", supplier_id: "123", dealer_id: "123", status: "UNUSE", value: 123, package_id: "123", created_at: new Date().toString(), updated_at: new Date().toString() }
+			{ id: "133", citizen_id: "123", supplier_id: "123", dealer_id: "123", status: "UNUSE", value: "123", package_id: "123", created_at: new Date().toString(), updated_at: new Date().toString() }
 		];
 
 		for (const asset of assets) {
 			await this.CreateVoucher(
 				ctx,
-				{ ...asset }
+				asset.id,
+				asset.citizen_id,
+				asset.supplier_id,
+				asset.dealer_id,
+				asset.status,
+				asset.value,
+				asset.package_id,
+				asset.created_at,
+				asset.updated_at
 			);
 		}
 	}
