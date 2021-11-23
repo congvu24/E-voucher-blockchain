@@ -74,29 +74,31 @@ const { Buffer } = require('buffer');
 class Chaincode extends Contract {
 
 	// CreateAsset - create a new asset, store into chaincode state
-	async CreateVoucher(ctx, id, citizen_id, supplier_id, dealer_id, status, value, package_id, created_at, updated_at) {
-		const exists = await this.VoucherExists(ctx, id);
+	async CreateVoucher(ctx, key, citizen_id, supplier_id, dealer_id, type, status, value, package_id, created_at, updated_at, validDate) {
+		const exists = await this.VoucherExists(ctx, key);
 		if (exists) {
-			throw new Error(`The voucher ${id} already exists`);
+			throw new Error(`The voucher ${key} already exists`);
 		}
 
 		// ==== Create asset object and marshal to JSON ====
 		let voucher = {
 			docType: 'voucher',
-			voucher_id: id,
+			voucher_id: key,
 			citizen_id: citizen_id,
 			supplier_id: supplier_id,
 			dealer_id: dealer_id,
 			status: status,
 			value: value,
+			type: type,
 			package_id: package_id,
 			created_at: created_at,
-			updated_at: updated_at
+			updated_at: updated_at,
+			valid_date: validDate,
 		};
 
 
 		// === Save asset to state ===
-		await ctx.stub.putState(id, Buffer.from(JSON.stringify(voucher)));
+		await ctx.stub.putState(key, Buffer.from(JSON.stringify(voucher)));
 		let indexName = 'voucher_id~citizen_id';
 		let voucherCitizenIndexKey = await ctx.stub.createCompositeKey(indexName, [voucher.voucher_id, voucher.citizen_id]);
 

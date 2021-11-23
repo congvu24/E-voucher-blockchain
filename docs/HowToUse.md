@@ -19,4 +19,4 @@ exec: ./minifab portainerup
 
 ### deploy chaincode:
 copy chaincode into /var/chaincode
-exec: ./minifab -n <ccname> -l <node|go|java> -d <true|false>
+exec: ./minifab ccup -n <ccname> -l <node|go|java> -d <true|false> -v <version of cc>
