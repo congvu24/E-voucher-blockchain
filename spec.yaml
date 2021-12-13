@@ -1,16 +1,15 @@
 fabric:
   cas:
-  - "ca1.org0.example.com"
-  - "ca1.org1.example.com"
+  - "ca1.supplier.voucher.com"
+  - "ca1.dealer1.voucher.com"
   peers: 
-  - "peer1.org0.example.com"
-  - "peer2.org0.example.com"
-  - "peer1.org1.example.com"
-  - "peer2.org1.example.com"
+  - "manager.supplier.voucher.com"
+  - "user.supplier.voucher.com"
+  - "peer1.dealer1.voucher.com"
+  - "peer2.dealer1.voucher.com"
   orderers:
   - "orderer1.example.com"
   - "orderer2.example.com"
-  - "orderer3.example.com"
   settings:
     ca:
       FABRIC_LOGGING_SPEC: DEBUG
@@ -18,6 +17,9 @@ fabric:
       FABRIC_LOGGING_SPEC: DEBUG
     orderer:
       FABRIC_LOGGING_SPEC: DEBUG
+  netname: "vouchernet"
+  ### set the extra optins for docker run command
+  container_options: "--restart=always --log-opt max-size=10m --log-opt max-file=3"
   ### use go proxy when default go proxy is restricted in some of the regions.
   ### the default goproxy
   # goproxy: "https://proxy.golang.org,direct"
@@ -26,6 +28,3 @@ fabric:
   ### set the endpoint address to override the automatically detected IP address
   # endpoint_address: 104.196.45.144
   ### set the docker network name to override the automatically generated name.
-  netname: "mysite"
-  ### set the extra optins for docker run command
-  # container_options: "--restart=always --log-opt max-size=10m --log-opt max-file=3"
